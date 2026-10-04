@@ -141,7 +141,18 @@ require("nvim-tree").setup({
 		end, { buffer = bufnr })
 		vim.keymap.set("n", "x", function()
 			local node = api.tree.get_node_under_cursor()
-			vim.system({ "open", "-R", node.absolute_path }, { detach = true })
+			if not node then
+				return
+			end
+
+			if vim.fn.has("win32") == 1 then
+				local path = node.absolute_path:gsub("/", "\\")
+				vim.system({ "explorer.exe", "/select," .. path }, { detach = true })
+			elseif vim.fn.has("macunix") == 1 then
+				vim.system({ "open", "-R", node.absolute_path }, { detach = true })
+			else
+				vim.ui.open(vim.fs.dirname(node.absolute_path))
+			end
 		end, { buffer = bufnr })
 		-- prompts y/N, and deletes the whole range when used from visual mode
 		vim.keymap.set({ "n", "x" }, "D", api.fs.remove, { buffer = bufnr, nowait = true })

@@ -11,42 +11,8 @@ vim.lsp.config("*", {
 	},
 })
 
--- Locate a global tsserver.js without hardcoding a user/home path.
--- Override with $TSSERVER_PATH when installed somewhere unusual.
-local function tsserver_fallback_path()
-	local override = vim.env.TSSERVER_PATH
-	if override and vim.uv.fs_stat(override) then
-		return override
-	end
-
-	local data = vim.env.XDG_DATA_HOME and vim.fs.normalize(vim.env.XDG_DATA_HOME) or vim.fs.normalize("~/.local/share")
-	local patterns = {
-		-- globver/selever managed npm packages
-		data .. "/selever/npm/*/node_modules/typescript/lib/tsserver.js",
-		data .. "/selever/npm/*/*/node_modules/typescript/lib/tsserver.js",
-		-- plain global npm prefixes
-		data .. "/npm/lib/node_modules/typescript/lib/tsserver.js",
-		vim.fs.normalize("~/.npm-global/lib/node_modules/typescript/lib/tsserver.js"),
-	}
-
-	local found = {}
-	for _, pattern in ipairs(patterns) do
-		vim.list_extend(found, vim.fn.glob(pattern, true, true))
-	end
-	if #found == 0 then
-		return nil
-	end
-	table.sort(found, function(a, b)
-		return a > b
-	end)
-	return found[1]
-end
-
 vim.lsp.config("ts_ls", {
 	init_options = {
-		tsserver = {
-			fallbackPath = tsserver_fallback_path(),
-		},
 		preferences = {
 			preferGoToSourceDefinition = true,
 			jsxAttributeCompletionStyle = "none",
