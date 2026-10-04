@@ -77,6 +77,12 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		if not client then
 			return
 		end
+		if vim.b[event.buf].bigfile then
+			vim.schedule(function()
+				vim.lsp.buf_detach_client(event.buf, client.id)
+			end)
+			return
+		end
 		client._log_prefix = ("LSP[%s:%d]"):format(client.name, client.id)
 		vim.lsp.completion.enable(true, client.id, event.buf, { autotrigger = true })
 	end,

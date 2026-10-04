@@ -215,6 +215,9 @@ vim.api.nvim_create_autocmd("User", {
 
 vim.api.nvim_create_autocmd("FileType", {
 	callback = function(event)
+		if vim.b[event.buf].bigfile then
+			return
+		end
 		pcall(vim.treesitter.start, event.buf)
 	end,
 })
