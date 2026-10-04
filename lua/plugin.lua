@@ -143,6 +143,8 @@ require("nvim-tree").setup({
 			local node = api.tree.get_node_under_cursor()
 			vim.system({ "open", "-R", node.absolute_path }, { detach = true })
 		end, { buffer = bufnr })
+		-- prompts y/N, and deletes the whole range when used from visual mode
+		vim.keymap.set({ "n", "x" }, "D", api.fs.remove, { buffer = bufnr, nowait = true })
 		vim.keymap.set("n", "R", api.tree.reload, { buffer = bufnr })
 		vim.keymap.set("n", "q", api.tree.close, { buffer = bufnr })
 	end,
