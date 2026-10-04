@@ -50,6 +50,13 @@ require("nvim-tree").setup({
 				api.node.open.edit(node)
 			end
 		end, { buffer = bufnr })
+		-- <Space>: toggle on a folder, open on a file
+		vim.keymap.set("n", "<Space>", function()
+			local node = api.tree.get_node_under_cursor()
+			if node and node.parent then
+				api.node.open.edit(node)
+			end
+		end, { buffer = bufnr, nowait = true })
 		vim.keymap.set("n", "<2-LeftMouse>", api.node.open.edit, { buffer = bufnr })
 		vim.keymap.set("n", "l", function()
 			local node = api.tree.get_node_under_cursor()

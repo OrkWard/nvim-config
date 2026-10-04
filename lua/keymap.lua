@@ -2,9 +2,6 @@
 local map = vim.keymap.set
 local opts = { noremap = true }
 
--- Leader
-vim.g.mapleader = " "
-
 -- ================================== Core ==================================
 
 map("n", "U", "<C-r>", opts)
@@ -159,28 +156,24 @@ map("n", "<C-S-f>", function()
 	MiniPick.registry.search(vim.fn.expand("<cword>"))
 end)
 
+-- <C-e>: toggle tree, focus it when opening
 map("n", "<C-e>", function()
+	local tree = require("nvim-tree.api").tree
+	if tree.is_visible() then
+		tree.close()
+	else
+		tree.find_file({ open = true, focus = true })
+	end
+end)
+
+-- <C-S-e>: switch focus editor <-> tree, opening the tree if needed
+map("n", "<C-S-e>", function()
 	local tree = require("nvim-tree.api").tree
 	if vim.bo.filetype == "NvimTree" then
 		vim.cmd("wincmd p")
 	else
 		tree.find_file({ open = true, focus = true })
 	end
-end)
-
-map("n", "<C-S-e>", function()
-	local tree = require("nvim-tree.api").tree
-	if tree.is_visible() then
-		tree.close()
-	else
-		local window = vim.api.nvim_get_current_win()
-		tree.open({ find_file = true })
-		vim.api.nvim_set_current_win(window)
-	end
-end)
-
-map("n", "<leader>l", function()
-	require("lsp").open()
 end)
 
 -- =============================== Picker ========================================
