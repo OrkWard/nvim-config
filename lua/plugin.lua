@@ -22,6 +22,30 @@ require("nvim-web-devicons").set_icon({
 	["go.sum"] = { icon = "󰟓", color = "#00ADD8", cterm_color = "38", name = "GoSum" },
 })
 vim.api.nvim_set_hl(0, "NvimTreeHiddenCursor", { bg = "#000000", blend = 100 })
+
+-- The built-in Visual highlight stops at the end of the entry name and the
+-- Cursor highlight punches a hole into it, which is useless with a hidden
+-- cursor. Repaint the selection with line extmarks instead: those span the full
+-- window width and win over the cursor cell.
+local tree_visual_ns = vim.api.nvim_create_namespace("nvim_tree_visual")
+
+local function tree_visual_paint(bufnr)
+	vim.api.nvim_buf_clear_namespace(bufnr, tree_visual_ns, 0, -1)
+
+	local mode = vim.api.nvim_get_mode().mode
+	if mode ~= "v" and mode ~= "V" and mode ~= "\22" then
+		return
+	end
+
+	local first, last = vim.fn.line("v"), vim.fn.line(".")
+	if first > last then
+		first, last = last, first
+	end
+	for line = first, last do
+		vim.api.nvim_buf_set_extmark(bufnr, tree_visual_ns, line - 1, 0, { line_hl_group = "Visual" })
+	end
+end
+
 require("nvim-tree").setup({
 	disable_netrw = false,
 	hijack_netrw = false,
@@ -44,6 +68,15 @@ require("nvim-tree").setup({
 			buffer = bufnr,
 			command = "set guicursor=a:block-NvimTreeHiddenCursor",
 		})
+		vim.api.nvim_create_autocmd({ "ModeChanged", "CursorMoved" }, {
+			buffer = bufnr,
+			callback = function()
+				tree_visual_paint(bufnr)
+			end,
+		})
+
+		-- character-wise selection is meaningless on a tree of file names
+		vim.keymap.set("n", "v", "V", { buffer = bufnr, nowait = true })
 		vim.keymap.set("n", "<CR>", function()
 			local node = api.tree.get_node_under_cursor()
 			if node and node.parent then
