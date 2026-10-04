@@ -14,6 +14,9 @@ vim.pack.add({
 	"https://github.com/neovim/nvim-lspconfig.git",
 	"https://github.com/nvim-treesitter/nvim-treesitter.git",
 	"https://github.com/stevearc/quicker.nvim.git",
+	"https://github.com/lewis6991/gitsigns.nvim.git",
+	"https://github.com/nvim-lua/plenary.nvim.git",
+	"https://github.com/NeogitOrg/neogit.git",
 })
 
 require("nvim-web-devicons").set_icon({
@@ -22,6 +25,20 @@ require("nvim-web-devicons").set_icon({
 	["go.sum"] = { icon = "󰟓", color = "#00ADD8", cterm_color = "38", name = "GoSum" },
 })
 vim.api.nvim_set_hl(0, "NvimTreeHiddenCursor", { bg = "#000000", blend = 100 })
+
+-- nvim-tree links its git icons to syntax groups by default, which says nothing
+-- about git. Give every state its own colour from the theme palette instead.
+for group, color in pairs({
+	NvimTreeGitNewIcon = "#649f57",
+	NvimTreeGitStagedIcon = "#5b79e3",
+	NvimTreeGitDirtyIcon = "#dabb7e",
+	NvimTreeGitDeletedIcon = "#d36151",
+	NvimTreeGitRenamedIcon = "#a449ab",
+	NvimTreeGitMergeIcon = "#ad6e25",
+	NvimTreeGitIgnoredIcon = "#a2a3a7",
+}) do
+	vim.api.nvim_set_hl(0, group, { fg = color })
+end
 
 -- The built-in Visual highlight stops at the end of the entry name and the
 -- Cursor highlight punches a hole into it, which is useless with a hidden
@@ -140,6 +157,20 @@ require("nvim-tree").setup({
 		root_folder_label = ":t",
 		indent_markers = { enable = true },
 		icons = {
+			-- same language as the editor: one solid bar on the right, the state
+			-- is carried by the colour alone
+			git_placement = "right_align",
+			glyphs = {
+				git = {
+					unstaged = "\u{258e}",
+					staged = "\u{258e}",
+					unmerged = "\u{258e}",
+					renamed = "\u{258e}",
+					untracked = "\u{258e}",
+					deleted = "\u{258e}",
+					ignored = "\u{258e}",
+				},
+			},
 			show = {
 				file = true,
 				folder = true,
@@ -446,6 +477,93 @@ do
 		},
 	})
 end
+
+local border = { "┌", "─", "┐", "│", "┘", "─", "└", "│" }
+
+-- Gitsigns can only draw into the sign column on the left, so render the hunk
+-- bars ourselves as right aligned virtual text.
+local git_sign_ns = vim.api.nvim_create_namespace("gitsigns_right")
+local git_sign_hl = {
+	add = "GitSignsAdd",
+	change = "GitSignsChange",
+	delete = "GitSignsDelete",
+}
+
+local function git_signs_right(bufnr)
+	if not vim.api.nvim_buf_is_loaded(bufnr) then
+		return
+	end
+	vim.api.nvim_buf_clear_namespace(bufnr, git_sign_ns, 0, -1)
+
+	local ok, hunks = pcall(require("gitsigns").get_hunks, bufnr)
+	if not ok or not hunks then
+		return
+	end
+
+	local line_count = vim.api.nvim_buf_line_count(bufnr)
+	for _, hunk in ipairs(hunks) do
+		local hl = git_sign_hl[hunk.type] or "GitSignsChange"
+		-- a pure deletion owns no line, so mark the line it happened after
+		for offset = 0, math.max(hunk.added.count, 1) - 1 do
+			local line = math.min(math.max(hunk.added.start + offset, 1), line_count)
+			pcall(vim.api.nvim_buf_set_extmark, bufnr, git_sign_ns, line - 1, 0, {
+				virt_text = { { "\u{258e}", hl } },
+				virt_text_pos = "right_align",
+				hl_mode = "combine",
+			})
+		end
+	end
+end
+
+vim.api.nvim_create_autocmd("User", {
+	pattern = "GitSignsUpdate",
+	callback = function(event)
+		local bufnr = event.data and event.data.buffer
+		if bufnr then
+			git_signs_right(bufnr)
+		end
+	end,
+})
+
+require("gitsigns").setup({
+	signcolumn = false,
+	preview_config = { border = border },
+	on_attach = function(bufnr)
+		-- large buffers are already running without treesitter/LSP
+		if vim.b[bufnr].bigfile then
+			return false
+		end
+
+		local gitsigns = require("gitsigns")
+		local function map(lhs, rhs)
+			vim.keymap.set("n", lhs, rhs, { buffer = bufnr })
+		end
+
+		map("]h", function()
+			gitsigns.nav_hunk("next")
+		end)
+		map("[h", function()
+			gitsigns.nav_hunk("prev")
+		end)
+		map("ghp", gitsigns.preview_hunk)
+		map("ghs", gitsigns.stage_hunk)
+		map("ghr", gitsigns.reset_hunk)
+		map("ghd", gitsigns.diffthis)
+		map("ghb", function()
+			gitsigns.blame_line({ full = true })
+		end)
+	end,
+})
+
+require("neogit").setup({
+	disable_hint = true,
+	graph_style = "unicode",
+	signs = {
+		hunk = { "", "" },
+		item = { "", "" },
+		section = { "", "" },
+	},
+})
 
 require("hop").setup()
 
