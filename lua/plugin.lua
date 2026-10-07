@@ -13,6 +13,7 @@ vim.pack.add({
 	"https://github.com/altermo/ultimate-autopair.nvim.git",
 	"https://github.com/neovim/nvim-lspconfig.git",
 	"https://github.com/nvim-treesitter/nvim-treesitter.git",
+	{ src = "https://github.com/nvim-treesitter/nvim-treesitter-textobjects.git", version = "main" },
 	"https://github.com/stevearc/quicker.nvim.git",
 	"https://github.com/lewis6991/gitsigns.nvim.git",
 	"https://github.com/nvim-lua/plenary.nvim.git",
@@ -295,7 +296,12 @@ vim.api.nvim_create_autocmd("FileType", {
 		if vim.b[event.buf].bigfile then
 			return
 		end
-		pcall(vim.treesitter.start, event.buf)
+		-- a parser without highlights (e.g. a leftover .so) would clear 'syntax'
+		-- and then fail, leaving no highlighting at all
+		local lang = vim.treesitter.language.get_lang(event.match)
+		if lang and vim.treesitter.query.get(lang, "highlights") then
+			pcall(vim.treesitter.start, event.buf)
+		end
 	end,
 })
 
@@ -493,53 +499,18 @@ end
 
 local border = { "┌", "─", "┐", "│", "┘", "─", "└", "│" }
 
--- Gitsigns can only draw into the sign column on the left, so render the hunk
--- bars ourselves as right aligned virtual text.
-local git_sign_ns = vim.api.nvim_create_namespace("gitsigns_right")
-local git_sign_hl = {
-	add = "GitSignsAdd",
-	change = "GitSignsChange",
-	delete = "GitSignsDelete",
+local git_bar = "\u{258e}"
+local git_signs = {
+	add = { text = git_bar },
+	change = { text = git_bar },
+	changedelete = { text = git_bar },
+	untracked = { text = git_bar },
 }
 
-local function git_signs_right(bufnr)
-	if not vim.api.nvim_buf_is_loaded(bufnr) then
-		return
-	end
-	vim.api.nvim_buf_clear_namespace(bufnr, git_sign_ns, 0, -1)
-
-	local ok, hunks = pcall(require("gitsigns").get_hunks, bufnr)
-	if not ok or not hunks then
-		return
-	end
-
-	local line_count = vim.api.nvim_buf_line_count(bufnr)
-	for _, hunk in ipairs(hunks) do
-		local hl = git_sign_hl[hunk.type] or "GitSignsChange"
-		-- a pure deletion owns no line, so mark the line it happened after
-		for offset = 0, math.max(hunk.added.count, 1) - 1 do
-			local line = math.min(math.max(hunk.added.start + offset, 1), line_count)
-			pcall(vim.api.nvim_buf_set_extmark, bufnr, git_sign_ns, line - 1, 0, {
-				virt_text = { { "\u{258e}", hl } },
-				virt_text_pos = "right_align",
-				hl_mode = "combine",
-			})
-		end
-	end
-end
-
-vim.api.nvim_create_autocmd("User", {
-	pattern = "GitSignsUpdate",
-	callback = function(event)
-		local bufnr = event.data and event.data.buffer
-		if bufnr then
-			git_signs_right(bufnr)
-		end
-	end,
-})
-
 require("gitsigns").setup({
-	signcolumn = false,
+	signcolumn = true,
+	signs = git_signs,
+	signs_staged = git_signs,
 	preview_config = { border = border },
 	on_attach = function(bufnr)
 		-- large buffers are already running without treesitter/LSP
@@ -556,6 +527,12 @@ require("gitsigns").setup({
 			gitsigns.nav_hunk("next")
 		end)
 		map("[h", function()
+			gitsigns.nav_hunk("prev")
+		end)
+		map("]g", function()
+			gitsigns.nav_hunk("next")
+		end)
+		map("[g", function()
 			gitsigns.nav_hunk("prev")
 		end)
 		map("ghp", gitsigns.preview_hunk)

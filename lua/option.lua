@@ -12,6 +12,7 @@ opt.autoindent = true -- inherit indent from last line. this has no confict to s
 -- Line numbers
 opt.number = true
 opt.relativenumber = true
+opt.signcolumn = "yes" -- always reserve space so git signs don't shift text
 
 -- Behavior
 opt.hidden = true -- allow vim make a dirty buffer hidden, but not unloaded (not so clear)

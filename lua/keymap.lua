@@ -83,7 +83,30 @@ map("n", "<C-j>", "gJ", opts)
 -- ]T/[T = Next/prev todo + select
 -- ]c/[c = Next/prev comment
 -- ]C/[C = Next/prev comment + select
+-- ]g/[g = Next/prev git change (gitsigns, in plugin.lua)
+-- ]a/[a = Next/prev parameter (function definition args)
+-- ]v/[v = Next/prev variable definition
 -- Will be configured with treesitter/textobject plugins
+
+-- treesitter jumps, via nvim-treesitter-textobjects
+-- the plugin errors in buffers without a parser (find_best_range returns {}),
+-- so skip those
+local function ts_move(fn, target)
+	return function()
+		if vim.treesitter.get_parser(0, nil, { error = false }) then
+			require("nvim-treesitter-textobjects.move")[fn](target[1], target[2])
+		end
+	end
+end
+for key, target in pairs({
+	c = { "@comment.outer", "textobjects" },
+	f = { "@function.outer", "textobjects" },
+	a = { "@local.definition.parameter", "locals" }, -- definitions only, not call args
+	v = { "@local.definition.var", "locals" },
+}) do
+	map({ "n", "x", "o" }, "]" .. key, ts_move("goto_next_start", target))
+	map({ "n", "x", "o" }, "[" .. key, ts_move("goto_previous_start", target))
+end
 
 map({ "n", "x", "o" }, "[x", function()
 	vim.treesitter.select("parent", vim.v.count1)
