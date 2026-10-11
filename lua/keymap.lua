@@ -12,6 +12,14 @@ map("n", "~", "g~", opts)
 map("n", "x", "<NOP>", opts)
 map("n", "X", "<NOP>", opts)
 
+-- <C-s> -> write
+map("n", "<C-s>", "<Cmd>write<CR>", opts)
+-- <C-Tab> -> alternate buffer
+map("n", "<C-Tab>", "<C-^>", opts)
+-- <Space> -> toggle fold
+map("n", "<Space>", "za", opts)
+-- NOTE: <C-[> -> <C-t> intentionally NOT mapped: <C-[> is <Esc> in the terminal.
+
 -- =================================== Jump ==================================
 
 map("n", "s", function()
@@ -87,6 +95,11 @@ map("n", "<C-j>", "gJ", opts)
 -- ]a/[a = Next/prev parameter (function definition args)
 -- ]v/[v = Next/prev variable definition
 -- Will be configured with treesitter/textobject plugins
+
+-- Kept at Vim/Neovim default behaviour (intentionally not remapped):
+--   [d/]d diagnostic, [z/]z fold, [i/]i include, [[/]] section start,
+--   []/][ section end, gf open file.
+-- Mapping them to themselves with noremap would shadow Neovim's defaults.
 
 -- treesitter jumps, via nvim-treesitter-textobjects
 -- the plugin errors in buffers without a parser (find_best_range returns {}),
