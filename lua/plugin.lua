@@ -535,13 +535,6 @@ require("gitsigns").setup({
 		map("[g", function()
 			gitsigns.nav_hunk("prev")
 		end)
-		map("ghp", gitsigns.preview_hunk)
-		map("ghs", gitsigns.stage_hunk)
-		map("ghr", gitsigns.reset_hunk)
-		map("ghd", gitsigns.diffthis)
-		map("ghb", function()
-			gitsigns.blame_line({ full = true })
-		end)
 	end,
 })
 
