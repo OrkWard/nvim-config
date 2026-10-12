@@ -49,8 +49,10 @@ hl(0, "SignColumn", { bg = colors.white })
 hl(0, "ColorColumn", { bg = colors.faint_gray })
 
 -- Selection
-hl(0, "Visual", { bg = colors.blue_gray })
-hl(0, "VisualNOS", { bg = colors.blue_gray })
+-- Zed One Light paints the selection as the player blue at 24% over the
+-- editor background: #5c78e2 at 0x3d on #fafafa
+hl(0, "Visual", { bg = "#d4dbf4" })
+hl(0, "VisualNOS", { bg = "#d4dbf4" })
 hl(0, "Search", { fg = colors.black, bg = colors.blue_gray })
 -- Yank flash: the palette blue over the background, deepening with the size of
 -- the register type (see lua/keymap.lua)
