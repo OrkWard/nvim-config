@@ -34,7 +34,7 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 		end
 		vim.hl.on_yank({
 			higroup = yank_flash[event.regtype] or "YankFlashBlock",
-			timeout = 1000,
+			timeout = 200,
 		})
 		if yank_position then
 			pcall(vim.api.nvim_win_set_cursor, 0, yank_position)
