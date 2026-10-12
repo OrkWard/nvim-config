@@ -22,10 +22,11 @@ map("n", "<Space>", "za", opts)
 
 -- =================================== Jump ==================================
 
-map("n", "s", function()
+-- s/S is the jump motion in every mode, operators included: ds<char><char>
+map({ "n", "x", "o" }, "s", function()
 	vim.cmd("HopChar2AC")
 end)
-map("n", "S", function()
+map({ "n", "x", "o" }, "S", function()
 	vim.cmd("HopChar2BC")
 end)
 
@@ -143,12 +144,13 @@ map("x", "X", function()
 end)
 
 -- =================================== Surround ====================================
-map("n", "xs", "<Plug>(nvim-surround-normal)")
-map("n", "xss", "<Plug>(nvim-surround-normal-cur)")
-map("n", "xS", "<Plug>(nvim-surround-normal-line)")
-map("n", "xSS", "<Plug>(nvim-surround-normal-cur-line)")
-map("v", "s", "<Plug>(nvim-surround-visual)")
-map("v", "S", "<Plug>(nvim-surround-visual-line)")
+-- m is the surround object: ym add, dm delete, cm change
+map("n", "ym", "<Plug>(nvim-surround-normal)")
+map("n", "ymm", "<Plug>(nvim-surround-normal-cur)")
+map("n", "yM", "<Plug>(nvim-surround-normal-line)")
+map("n", "yMM", "<Plug>(nvim-surround-normal-cur-line)")
+map("x", "m", "<Plug>(nvim-surround-visual)")
+map("x", "M", "<Plug>(nvim-surround-visual-line)")
 map("n", "dm", "<Plug>(nvim-surround-delete)")
 map("n", "cm", "<Plug>(nvim-surround-change)")
 map("n", "cM", "<Plug>(nvim-surround-change-line)")

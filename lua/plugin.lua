@@ -1,4 +1,9 @@
 -- ================================== Plugins ==================================
+-- nvim-surround sets ys/ds/cs and visual S from its plugin file, which runs as
+-- soon as vim.pack.add loads it. This config spends those keys elsewhere and
+-- binds the <Plug> mappings to the m object in lua/keymap.lua instead.
+vim.g.nvim_surround_no_mappings = true
+
 vim.pack.add({
 	"https://github.com/nvim-mini/mini.pick",
 	"https://github.com/kylechui/nvim-surround",
