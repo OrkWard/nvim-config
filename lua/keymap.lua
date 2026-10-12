@@ -5,8 +5,43 @@ local opts = { noremap = true }
 -- ================================== Core ==================================
 
 map("n", "U", "<C-r>", opts)
-map("n", "Y", "y$", opts)
 map("n", "~", "g~", opts)
+
+-- ================================== Yank ==================================
+
+-- Vim parks the cursor on the first yanked character, so a backwards yank
+-- drags the cursor away from where you were reading. Remember the position
+-- before the operator runs and put it back afterwards. The mapping is an
+-- expression so counts, registers and operator pending motions keep working.
+local yank_position
+local function remember(keys)
+	return function()
+		yank_position = vim.api.nvim_win_get_cursor(0)
+		return keys
+	end
+end
+map({ "n", "x" }, "y", remember("y"), { expr = true })
+map("n", "Y", remember("y$"), { expr = true })
+map("x", "Y", remember("Y"), { expr = true })
+
+-- Flash the yanked text, one shade per register type.
+local yank_flash = { v = "YankFlashChar", V = "YankFlashLine" }
+vim.api.nvim_create_autocmd("TextYankPost", {
+	callback = function()
+		local event = vim.v.event
+		if event.operator ~= "y" then
+			return
+		end
+		vim.hl.on_yank({
+			higroup = yank_flash[event.regtype] or "YankFlashBlock",
+			timeout = 1000,
+		})
+		if yank_position then
+			pcall(vim.api.nvim_win_set_cursor, 0, yank_position)
+			yank_position = nil
+		end
+	end,
+})
 
 -- x/X Free
 map("n", "x", "<NOP>", opts)
