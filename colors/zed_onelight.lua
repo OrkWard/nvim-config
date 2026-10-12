@@ -54,12 +54,9 @@ hl(0, "ColorColumn", { bg = colors.faint_gray })
 hl(0, "Visual", { bg = "#d4dbf4" })
 hl(0, "VisualNOS", { bg = "#d4dbf4" })
 hl(0, "Search", { fg = colors.black, bg = colors.blue_gray })
--- Yank flash: the palette blue over the background, deepening with the size of
--- the register type. The steps straddle the selection at 24% so no flash lands
--- on the same shade (see lua/keymap.lua)
-hl(0, "YankFlashChar", { bg = "#edf0f8" })
-hl(0, "YankFlashLine", { bg = "#c4cef2" })
-hl(0, "YankFlashBlock", { bg = "#9badec" })
+-- Yank flash: the palette blue at 8% over the background, lighter than the
+-- selection so the two never read the same (see lua/keymap.lua)
+hl(0, "YankFlash", { bg = "#edf0f8" })
 hl(0, "IncSearch", { fg = colors.black, bg = colors.faint_gray, bold = true })
 hl(0, "CurSearch", { fg = colors.black, bg = colors.gray, bold = true })
 hl(0, "MatchParen", { fg = colors.dark_blue, bold = true })

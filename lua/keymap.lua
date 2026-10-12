@@ -24,18 +24,14 @@ map({ "n", "x" }, "y", remember("y"), { expr = true })
 map("n", "Y", remember("y$"), { expr = true })
 map("x", "Y", remember("Y"), { expr = true })
 
--- Flash the yanked text, one shade per register type.
-local yank_flash = { v = "YankFlashChar", V = "YankFlashLine" }
+-- Flash the yanked text.
 vim.api.nvim_create_autocmd("TextYankPost", {
 	callback = function()
 		local event = vim.v.event
 		if event.operator ~= "y" then
 			return
 		end
-		vim.hl.on_yank({
-			higroup = yank_flash[event.regtype] or "YankFlashBlock",
-			timeout = 200,
-		})
+		vim.hl.on_yank({ higroup = "YankFlash", timeout = 200 })
 		if yank_position then
 			pcall(vim.api.nvim_win_set_cursor, 0, yank_position)
 			yank_position = nil
