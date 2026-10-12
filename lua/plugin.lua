@@ -134,12 +134,6 @@ require("nvim-tree").setup({
 				api.tree.reload()
 			end)
 		end, { buffer = bufnr, nowait = true })
-		vim.keymap.set("n", "/", function()
-			local node = api.tree.get_node_under_cursor()
-			local directory = node.type == "directory" and node.absolute_path or node.parent.absolute_path
-			vim.cmd("wincmd p")
-			require("quickfix").search(nil, directory)
-		end, { buffer = bufnr })
 		vim.keymap.set("n", "x", function()
 			local node = api.tree.get_node_under_cursor()
 			if not node then
@@ -392,7 +386,6 @@ do
 
 	pick.registry.buffers = buffers_recent
 	pick.registry.files = files_recent
-	pick.registry.search = require("quickfix").search
 end
 
 require("nvim-surround").setup({})

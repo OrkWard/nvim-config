@@ -184,13 +184,7 @@ map("n", "<C-p>", function()
 	MiniPick.registry.files()
 end)
 
-map("n", "<C-f>", function()
-	MiniPick.registry.search()
-end)
-
-map("n", "<C-S-f>", function()
-	MiniPick.registry.search(vim.fn.expand("<cword>"))
-end)
+-- TODO: project wide search. <C-f> and <C-S-f> are free until it exists.
 
 -- <C-e>: toggle tree, focus it when opening
 map("n", "<C-e>", function()
