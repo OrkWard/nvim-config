@@ -161,17 +161,18 @@ map({ "n", "x", "o" }, "]x", function()
 end)
 
 -- ================================= Exchange =====================================
-map("n", "cx", function()
-	require("substitute").operator()
+-- zx is a sub prefix so every z builtin (scrolling, folds, spell) keeps working
+map("n", "zx", function()
+	require("substitute.exchange").operator()
 end)
-map("n", "cxx", function()
-	require("substitute").line()
+map("n", "zxx", function()
+	require("substitute.exchange").line()
 end)
-map("n", "cX", function()
-	require("substitute").eol()
+map("n", "zxc", function()
+	require("substitute.exchange").cancel()
 end)
-map("x", "X", function()
-	require("substitute").visual()
+map("x", "zx", function()
+	require("substitute.exchange").visual()
 end)
 
 -- =================================== Surround ====================================
@@ -243,20 +244,3 @@ end)
 -- TODO
 -- map("n", "<M-C>", ) -> c without override reg
 -- map("n", "<M-D>", ) -> d without override reg
-
--- =========================== Edit Config Files (z prefix) =======================
-map("n", "zK", function()
-	vim.cmd("edit ~/.config/nvim/lua/keymap.lua")
-end)
-map("n", "zP", function()
-	vim.cmd("edit ~/.config/nvim/lua/plugin.lua")
-end)
-map("n", "zO", function()
-	vim.cmd("edit ~/.config/nvim/lua/option.lua")
-end)
-map("n", "zC", function()
-	vim.cmd("edit ~/.config/nvim/lua/command.lua")
-end)
-map("n", "zL", function()
-	vim.cmd("edit ~/.config/nvim/ftplugin/" .. vim.bo.filetype .. ".lua")
-end)
