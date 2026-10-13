@@ -24,14 +24,15 @@ opt.virtualedit = "block" -- vblock mode
 opt.autoread = true -- re-read when focus
 opt.ttimeoutlen = 50 -- timeout before escape string
 opt.wildmode = "longest:full,full" -- command complete mode
-opt.completeopt = "menuone,noselect,popup"
+opt.completeopt = "menuone,noinsert,popup"
 
 local diagnostic_set = vim.diagnostic.set
 local pending_diagnostics = {}
 
 vim.diagnostic.set = function(namespace, bufnr, diagnostics, opts)
 	local current_buf = vim.api.nvim_get_current_buf()
-	if vim.api.nvim_get_mode().mode:sub(1, 1) == "i" and (bufnr == 0 or bufnr == current_buf) then
+	local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
+	if (mode == "i" or mode == "s") and (bufnr == 0 or bufnr == current_buf) then
 		pending_diagnostics[current_buf] = pending_diagnostics[current_buf] or {}
 		pending_diagnostics[current_buf][namespace] = { diagnostics = diagnostics, opts = opts }
 		return
@@ -39,16 +40,22 @@ vim.diagnostic.set = function(namespace, bufnr, diagnostics, opts)
 	diagnostic_set(namespace, bufnr, diagnostics, opts)
 end
 
-vim.api.nvim_create_autocmd("InsertLeave", {
+vim.api.nvim_create_autocmd("ModeChanged", {
+	pattern = "*:n",
 	callback = function(event)
-		local pending = pending_diagnostics[event.buf]
-		pending_diagnostics[event.buf] = nil
-		if not pending then
-			return
-		end
-		for namespace, update in pairs(pending) do
-			diagnostic_set(namespace, event.buf, update.diagnostics, update.opts)
-		end
+		vim.schedule(function()
+			if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "n" then
+				return
+			end
+			local pending = pending_diagnostics[event.buf]
+			pending_diagnostics[event.buf] = nil
+			if not pending then
+				return
+			end
+			for namespace, update in pairs(pending) do
+				diagnostic_set(namespace, event.buf, update.diagnostics, update.opts)
+			end
+		end)
 	end,
 })
 

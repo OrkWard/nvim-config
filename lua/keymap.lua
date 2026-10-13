@@ -51,6 +51,46 @@ map("n", "<C-Tab>", "<C-^>", opts)
 map("n", "<Space>", "za", opts)
 -- NOTE: <C-[> -> <C-t> intentionally NOT mapped: <C-[> is <Esc> in the terminal.
 
+vim.api.nvim_create_autocmd("WinLeave", {
+	callback = function()
+		vim.w.insert_mode = vim.api.nvim_get_mode().mode:sub(1, 1) == "i"
+		if vim.w.insert_mode then
+			vim.w.insert_eol = vim.api.nvim_win_get_cursor(0)[2] == #vim.api.nvim_get_current_line()
+		end
+	end,
+})
+vim.api.nvim_create_autocmd("WinEnter", {
+	callback = function()
+		if vim.w.insert_mode then
+			if vim.w.insert_eol then
+				vim.cmd("startinsert!")
+			else
+				vim.cmd.startinsert()
+			end
+		else
+			vim.cmd.stopinsert()
+		end
+	end,
+})
+
+map({ "n", "i" }, "<M-a>", "<Cmd>wincmd h<CR>", opts)
+map({ "n", "i" }, "<M-s>", "<Cmd>wincmd j<CR>", opts)
+map({ "n", "i" }, "<M-w>", "<Cmd>wincmd k<CR>", opts)
+map({ "n", "i" }, "<M-d>", "<Cmd>wincmd l<CR>", opts)
+
+map({ "i", "s" }, "<Tab>", function()
+	if vim.fn.pumvisible() == 1 then
+		return "<C-y>"
+	end
+	if vim.snippet.active({ direction = 1 }) then
+		return "<Cmd>lua vim.snippet.jump(1)<CR>"
+	end
+	return "<Tab>"
+end, { expr = true })
+map({ "i", "s" }, "<S-Tab>", function()
+	return vim.snippet.active({ direction = -1 }) and "<Cmd>lua vim.snippet.jump(-1)<CR>" or "<S-Tab>"
+end, { expr = true })
+
 -- =================================== Jump ==================================
 
 -- s/S is the jump motion in every mode, operators included: ds<char><char>
@@ -96,7 +136,10 @@ map("n", "=g", function()
 	local conform = require("conform")
 	local to_run = conform.list_formatters_to_run(bufnr)
 	if #to_run > 0 then
-		conform.format({ bufnr = bufnr })
+		conform.format({ bufnr = bufnr }, function(err)
+			vim.b[bufnr].format_error = err and "E:format:" .. err:match("^Formatter '([^']+)'") or nil
+			require("lualine").refresh({ place = { "statusline" }, force = true })
+		end)
 	else
 		local view = vim.fn.winsaveview()
 		vim.cmd("normal! gg=G")
@@ -202,8 +245,6 @@ local emacs_maps = {
 	["<C-d>"] = "<Del>",
 	["<C-e>"] = "<End>",
 	["<C-f>"] = "<Right>",
-	["<C-n>"] = "<Down>",
-	["<C-p>"] = "<Up>",
 	["<M-b>"] = "<S-Left>",
 	["<M-f>"] = "<S-Right>",
 }
@@ -213,6 +254,23 @@ for k, v in pairs(emacs_maps) do
 	map("i", k, v, opts)
 end
 
+map("i", "<C-n>", function()
+	if vim.fn.pumvisible() == 0 then
+		return "<Down>"
+	end
+	local info = vim.fn.complete_info({ "items", "selected" })
+	vim.api.nvim_select_popupmenu_item((info.selected + 1) % #info.items, false, false, {})
+	return ""
+end, { expr = true })
+map("i", "<C-p>", function()
+	if vim.fn.pumvisible() == 0 then
+		return "<Up>"
+	end
+	local info = vim.fn.complete_info({ "items", "selected" })
+	vim.api.nvim_select_popupmenu_item((info.selected - 1) % #info.items, false, false, {})
+	return ""
+end, { expr = true })
+
 -- =============================== Picker ========================================
 map("n", "<C-p>", function()
 	MiniPick.registry.files()
@@ -220,8 +278,8 @@ end)
 
 -- TODO: project wide search. <C-f> and <C-S-f> are free until it exists.
 
--- <C-e>: toggle tree, focus it when opening
-map("n", "<C-e>", function()
+-- <M-e>: toggle tree, focus it when opening
+map("n", "<M-e>", function()
 	local tree = require("nvim-tree.api").tree
 	if tree.is_visible() then
 		tree.close()
@@ -230,8 +288,8 @@ map("n", "<C-e>", function()
 	end
 end)
 
--- <C-S-e>: switch focus editor <-> tree, opening the tree if needed
-map("n", "<C-S-e>", function()
+-- <C-M-e>: switch focus editor <-> tree, opening the tree if needed
+map("n", "<C-M-e>", function()
 	local tree = require("nvim-tree.api").tree
 	if vim.bo.filetype == "NvimTree" then
 		vim.cmd("wincmd p")

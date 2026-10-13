@@ -34,7 +34,7 @@ vim.lsp.config("harper_ls", {
 })
 
 vim.lsp.semantic_tokens.enable(false)
-vim.lsp.enable({ "ts_ls", "denols", "rust_analyzer", "gopls", "harper_ls" })
+vim.lsp.enable({ "ts_ls", "denols", "rust_analyzer", "gopls", "zls", "harper_ls" })
 vim.lsp.log.set_level("info")
 
 vim.api.nvim_create_autocmd("LspAttach", {
@@ -50,7 +50,20 @@ vim.api.nvim_create_autocmd("LspAttach", {
 			return
 		end
 		client._log_prefix = ("LSP[%s:%d]"):format(client.name, client.id)
-		vim.lsp.completion.enable(true, client.id, event.buf, { autotrigger = true })
+		if client:supports_method("textDocument/completion") then
+			local chars = {}
+			for char in ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_@."):gmatch(".") do
+				chars[#chars + 1] = char
+			end
+			client.server_capabilities.completionProvider.triggerCharacters = chars
+			vim.lsp.completion.enable(true, client.id, event.buf, { autotrigger = true })
+		end
+	end,
+})
+
+require("mini.snippets").start_lsp_server({
+	before_attach = function(bufnr)
+		return vim.bo[bufnr].filetype == "zig"
 	end,
 })
 

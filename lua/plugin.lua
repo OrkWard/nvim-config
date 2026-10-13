@@ -6,6 +6,7 @@ vim.g.nvim_surround_no_mappings = true
 
 vim.pack.add({
 	"https://github.com/nvim-mini/mini.pick",
+	"https://github.com/nvim-mini/mini.snippets",
 	"https://github.com/kylechui/nvim-surround",
 	"https://github.com/stevearc/conform.nvim.git",
 	"https://github.com/tpope/vim-sleuth.git",
@@ -23,6 +24,12 @@ vim.pack.add({
 	"https://github.com/lewis6991/gitsigns.nvim.git",
 	"https://github.com/nvim-lua/plenary.nvim.git",
 	"https://github.com/NeogitOrg/neogit.git",
+})
+
+local mini_snippets = require("mini.snippets")
+mini_snippets.setup({
+	snippets = { mini_snippets.gen_loader.from_lang() },
+	mappings = { expand = "", jump_next = "", jump_prev = "", stop = "" },
 })
 
 require("nvim-web-devicons").set_icon({
@@ -403,6 +410,7 @@ do
 			lua = { "stylua" },
 			python = { "isort", "black" },
 			rust = { "rustfmt", lsp_format = "fallback" },
+			zig = { "zigfmt" },
 			javascript = prettier,
 			javascriptreact = prettier,
 			typescript = prettier,
@@ -489,7 +497,15 @@ do
 			icons_enabled = false,
 		},
 		sections = {
-			lualine_c = { { "filename", path = 1, shorting_target = 0 } },
+			lualine_c = {
+				{ "filename", path = 1, shorting_target = 0 },
+				{
+					function()
+						return vim.b.format_error or ""
+					end,
+					color = { fg = colors.red },
+				},
+			},
 			lualine_x = { "lsp_status", "encoding", "fileformat", "filetype" },
 		},
 	})
