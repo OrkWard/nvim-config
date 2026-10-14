@@ -506,7 +506,7 @@ do
 					color = { fg = colors.red },
 				},
 			},
-			lualine_x = { "lsp_status", "encoding", "fileformat", "filetype" },
+			lualine_x = { { "lsp_status", ignore_lsp = { "mini.snippets" } }, "encoding", "fileformat", "filetype" },
 		},
 	})
 end
