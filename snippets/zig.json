@@ -1,0 +1,60 @@
+{
+  "Import std": {
+    "prefix": "std",
+    "body": "const std = @import(\"std\");",
+    "description": "Import the Zig standard library"
+  },
+  "Import module": {
+    "prefix": "imp",
+    "body": "const ${1:name} = @import(\"${2:path}\");$0",
+    "description": "Import a module"
+  },
+  "Test block": {
+    "prefix": "tst",
+    "body": [
+      "test \"${1:name}\" {",
+      "    $0",
+      "}"
+    ],
+    "description": "Define a test"
+  },
+  "Testing allocator": {
+    "prefix": "tal",
+    "body": "const allocator = std.testing.allocator;",
+    "description": "Use the testing allocator"
+  },
+  "Expect": {
+    "prefix": "tex",
+    "body": "try std.testing.expect(${1:condition});$0",
+    "description": "Assert a condition"
+  },
+  "Expect equal": {
+    "prefix": "teq",
+    "body": "try std.testing.expectEqual(${1:expected}, ${2:actual});$0",
+    "description": "Assert equal values"
+  },
+  "Expect error": {
+    "prefix": "ter",
+    "body": "try std.testing.expectError(${1:error.Expected}, ${2:actual});$0",
+    "description": "Assert an error"
+  },
+  "Expect equal strings": {
+    "prefix": "tes",
+    "body": "try std.testing.expectEqualStrings(${1:expected}, ${2:actual});$0",
+    "description": "Assert equal strings"
+  },
+  "Main function": {
+    "prefix": "mai",
+    "body": [
+      "pub fn main() !void {",
+      "    $0",
+      "}"
+    ],
+    "description": "Define main"
+  },
+  "Defer deinit": {
+    "prefix": "dei",
+    "body": "defer ${1:value}.deinit();$0",
+    "description": "Deinitialize a value at scope exit"
+  }
+}
