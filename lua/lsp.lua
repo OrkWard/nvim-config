@@ -37,6 +37,12 @@ vim.lsp.semantic_tokens.enable(false)
 vim.lsp.enable({ "ts_ls", "denols", "rust_analyzer", "gopls", "zls", "harper_ls" })
 vim.lsp.log.set_level("info")
 
+local document_highlight_handler = vim.lsp.handlers["textDocument/documentHighlight"]
+vim.lsp.handlers["textDocument/documentHighlight"] = function(err, result, context, config)
+	vim.lsp.util.buf_clear_references(context.bufnr)
+	return document_highlight_handler(err, result, context, config)
+end
+
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(event)
 		local client = vim.lsp.get_client_by_id(event.data.client_id)
@@ -57,6 +63,33 @@ vim.api.nvim_create_autocmd("LspAttach", {
 			end
 			client.server_capabilities.completionProvider.triggerCharacters = chars
 			vim.lsp.completion.enable(true, client.id, event.buf, { autotrigger = true })
+		end
+		if client:supports_method("textDocument/documentHighlight") then
+			local group = vim.api.nvim_create_augroup("lsp-document-highlight-" .. event.buf, { clear = true })
+			vim.api.nvim_create_autocmd("CursorMoved", {
+				group = group,
+				buffer = event.buf,
+				callback = vim.lsp.buf.document_highlight,
+			})
+			vim.api.nvim_create_autocmd("ModeChanged", {
+				group = group,
+				buffer = event.buf,
+				callback = function()
+					local highlights = vim.opt_local.winhighlight:get()
+					if vim.v.event.new_mode == "n" then
+						highlights.LspReferenceText = nil
+						highlights.LspReferenceRead = nil
+						highlights.LspReferenceWrite = nil
+						vim.lsp.buf.document_highlight()
+					else
+						highlights.LspReferenceText = "LspReferenceHidden"
+						highlights.LspReferenceRead = "LspReferenceHidden"
+						highlights.LspReferenceWrite = "LspReferenceHidden"
+					end
+					vim.opt_local.winhighlight = highlights
+				end,
+			})
+			vim.lsp.buf.document_highlight()
 		end
 	end,
 })
