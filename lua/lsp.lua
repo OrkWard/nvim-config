@@ -57,11 +57,6 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		end
 		client._log_prefix = ("LSP[%s:%d]"):format(client.name, client.id)
 		if client:supports_method("textDocument/completion") then
-			local chars = {}
-			for char in ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_@."):gmatch(".") do
-				chars[#chars + 1] = char
-			end
-			client.server_capabilities.completionProvider.triggerCharacters = chars
 			vim.lsp.completion.enable(true, client.id, event.buf, { autotrigger = true })
 		end
 		if client:supports_method("textDocument/documentHighlight") then

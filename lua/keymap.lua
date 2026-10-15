@@ -90,6 +90,7 @@ end, { expr = true })
 map({ "i", "s" }, "<S-Tab>", function()
 	return vim.snippet.active({ direction = -1 }) and "<Cmd>lua vim.snippet.jump(-1)<CR>" or "<S-Tab>"
 end, { expr = true })
+map("i", "<C-Space>", vim.lsp.completion.get)
 
 -- =================================== Jump ==================================
 
