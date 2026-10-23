@@ -45,6 +45,10 @@ map("n", "X", "<NOP>", opts)
 
 -- <C-s> -> write
 map("n", "<C-s>", "<Cmd>write<CR>", opts)
+map("n", "<C-c>", function()
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	vim.fn.setreg("+", ("%s:%d:%d"):format(vim.api.nvim_buf_get_name(0), cursor[1], cursor[2] + 1))
+end)
 -- <C-Tab> -> alternate buffer
 map("n", "<C-Tab>", "<C-^>", opts)
 -- <Space> -> toggle fold
@@ -73,24 +77,27 @@ vim.api.nvim_create_autocmd("WinEnter", {
 	end,
 })
 
-map({ "n", "i" }, "<M-a>", "<Cmd>wincmd h<CR>", opts)
-map({ "n", "i" }, "<M-s>", "<Cmd>wincmd j<CR>", opts)
-map({ "n", "i" }, "<M-w>", "<Cmd>wincmd k<CR>", opts)
-map({ "n", "i" }, "<M-d>", "<Cmd>wincmd l<CR>", opts)
+map({ "n", "i" }, "<M-h>", "<Cmd>wincmd h<CR>", opts)
+map({ "n", "i" }, "<M-j>", "<Cmd>wincmd j<CR>", opts)
+map({ "n", "i" }, "<M-k>", "<Cmd>wincmd k<CR>", opts)
+map({ "n", "i" }, "<M-l>", "<Cmd>wincmd l<CR>", opts)
 
-map({ "i", "s" }, "<Tab>", function()
+map("i", "<Tab>", function()
 	if vim.fn.pumvisible() == 1 then
 		return "<C-y>"
 	end
-	if vim.snippet.active({ direction = 1 }) then
-		return "<Cmd>lua vim.snippet.jump(1)<CR>"
+	if MiniSnippets.session.get() then
+		return "<Cmd>lua MiniSnippets.session.jump('next')<CR>"
 	end
 	return "<Tab>"
 end, { expr = true })
-map({ "i", "s" }, "<S-Tab>", function()
-	return vim.snippet.active({ direction = -1 }) and "<Cmd>lua vim.snippet.jump(-1)<CR>" or "<S-Tab>"
+map("i", "<S-Tab>", function()
+	return MiniSnippets.session.get() and "<Cmd>lua MiniSnippets.session.jump('prev')<CR>" or "<C-d>"
 end, { expr = true })
 map("i", "<C-Space>", vim.lsp.completion.get)
+map("i", "<C-g>", function()
+	return vim.fn.pumvisible() == 1 and "<C-e>" or "<C-g>"
+end, { expr = true })
 
 -- =================================== Jump ==================================
 
@@ -100,6 +107,27 @@ map({ "n", "x", "o" }, "s", function()
 end)
 map({ "n", "x", "o" }, "S", function()
 	vim.cmd("HopChar2BC")
+end)
+
+map("n", "<M-o>", function()
+	local jumps, index = unpack(vim.fn.getjumplist())
+	local bufnr = vim.api.nvim_get_current_buf()
+	for i = index, 1, -1 do
+		if jumps[i].bufnr ~= bufnr then
+			vim.cmd.normal({ args = { (index - i + 1) .. vim.keycode("<C-o>") }, bang = true })
+			return
+		end
+	end
+end)
+map("n", "<M-i>", function()
+	local jumps, index = unpack(vim.fn.getjumplist())
+	local bufnr = vim.api.nvim_get_current_buf()
+	for i = index + 2, #jumps do
+		if jumps[i].bufnr ~= bufnr then
+			vim.cmd.normal({ args = { (i - index - 1) .. vim.keycode("<C-i>") }, bang = true })
+			return
+		end
+	end
 end)
 
 vim.api.nvim_create_autocmd("LspAttach", {
@@ -118,7 +146,13 @@ vim.api.nvim_create_autocmd("LspAttach", {
 -- ================================== Search ====================================
 
 map("n", "/", "/\\v", opts)
-map("n", "<Esc>", "<Cmd>nohlsearch<CR>", opts)
+map("n", "<Esc>", function()
+	vim.cmd("nohlsearch")
+	local win = vim.b.lsp_floating_preview
+	if win and vim.api.nvim_win_is_valid(win) then
+		vim.api.nvim_win_close(win, true)
+	end
+end, opts)
 
 -- ================================== Indent ====================================
 
@@ -260,7 +294,10 @@ map("i", "<C-n>", function()
 		return "<Down>"
 	end
 	local info = vim.fn.complete_info({ "items", "selected" })
-	vim.api.nvim_select_popupmenu_item((info.selected + 1) % #info.items, false, false, {})
+	local selected = (info.selected + 1) % #info.items
+	if selected ~= info.selected then
+		vim.api.nvim_select_popupmenu_item(selected, false, false, {})
+	end
 	return ""
 end, { expr = true })
 map("i", "<C-p>", function()
@@ -268,12 +305,26 @@ map("i", "<C-p>", function()
 		return "<Up>"
 	end
 	local info = vim.fn.complete_info({ "items", "selected" })
-	vim.api.nvim_select_popupmenu_item((info.selected - 1) % #info.items, false, false, {})
+	local selected = info.selected == -1 and #info.items - 1 or (info.selected - 1) % #info.items
+	if selected ~= info.selected then
+		vim.api.nvim_select_popupmenu_item(selected, false, false, {})
+	end
 	return ""
 end, { expr = true })
+vim.api.nvim_create_autocmd("CompleteChanged", {
+	callback = function()
+		if vim.fn.complete_info({ "selected" }).selected == -1 then
+			vim.schedule(function()
+				if vim.fn.pumvisible() == 1 and vim.fn.complete_info({ "selected" }).selected == -1 then
+					vim.api.nvim_select_popupmenu_item(0, false, false, {})
+				end
+			end)
+		end
+	end,
+})
 
 -- =============================== Picker ========================================
-map("n", "<C-p>", function()
+map("n", "<M-p>", function()
 	MiniPick.registry.files()
 end)
 

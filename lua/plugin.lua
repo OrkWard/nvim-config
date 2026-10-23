@@ -31,6 +31,17 @@ mini_snippets.setup({
 	snippets = { mini_snippets.gen_loader.from_lang() },
 	mappings = { expand = "", jump_next = "", jump_prev = "", stop = "" },
 })
+vim.snippet.expand = function(body)
+	mini_snippets.default_insert({ body = body })
+end
+vim.api.nvim_create_autocmd("User", {
+	pattern = "MiniSnippetsSessionJump",
+	callback = function(event)
+		if event.data.tabstop_to == "0" then
+			mini_snippets.session.stop()
+		end
+	end,
+})
 
 require("nvim-web-devicons").set_icon({
 	go = { icon = "󰟓", color = "#00ADD8", cterm_color = "38", name = "Go" },
@@ -302,11 +313,37 @@ vim.api.nvim_create_autocmd("FileType", {
 		if vim.b[event.buf].bigfile then
 			return
 		end
-		-- a parser without highlights (e.g. a leftover .so) would clear 'syntax'
-		-- and then fail, leaving no highlighting at all
-		local lang = vim.treesitter.language.get_lang(event.match)
-		if lang and vim.treesitter.query.get(lang, "highlights") then
-			pcall(vim.treesitter.start, event.buf)
+		local start = function()
+			if
+				not vim.api.nvim_buf_is_valid(event.buf)
+				or not vim.api.nvim_buf_is_loaded(event.buf)
+				or vim.bo[event.buf].filetype ~= event.match
+				or vim.b[event.buf].bigfile
+			then
+				return
+			end
+			-- a parser without highlights (e.g. a leftover .so) would clear 'syntax'
+			-- and then fail, leaving no highlighting at all
+			local lang = vim.treesitter.language.get_lang(event.match)
+			if lang and vim.treesitter.query.get(lang, "highlights") then
+				pcall(vim.treesitter.start, event.buf)
+			end
+			if lang and vim.treesitter.query.get(lang, "folds") then
+				for _, win in ipairs(vim.fn.win_findbuf(event.buf)) do
+					vim.wo[win].foldmethod = "expr"
+					vim.wo[win].foldexpr = "v:lua.vim.treesitter.foldexpr()"
+				end
+			end
+		end
+		if vim.v.vim_did_enter == 1 then
+			vim.defer_fn(start, 20)
+		else
+			vim.api.nvim_create_autocmd("VimEnter", {
+				once = true,
+				callback = function()
+					vim.defer_fn(start, 100)
+				end,
+			})
 		end
 	end,
 })
@@ -411,6 +448,7 @@ do
 			python = { "isort", "black" },
 			rust = { "rustfmt", lsp_format = "fallback" },
 			zig = { "zigfmt" },
+			nim = { "nimpretty" },
 			javascript = prettier,
 			javascriptreact = prettier,
 			typescript = prettier,

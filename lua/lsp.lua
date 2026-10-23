@@ -1,5 +1,14 @@
 local M = {}
 
+local lsp_start = vim.lsp.start
+vim.lsp.start = function(config, opts)
+	local bufnr = opts and opts.bufnr or 0
+	if vim.api.nvim_buf_get_name(bufnr) == "" and config.name ~= "mini.snippets" then
+		return
+	end
+	return lsp_start(config, opts)
+end
+
 -- Shared LSP settings. Named configs below incrementally override this block.
 vim.lsp.config("*", {
 	capabilities = {
@@ -11,11 +20,29 @@ vim.lsp.config("*", {
 	},
 })
 
-vim.lsp.config("ts_ls", {
-	init_options = {
-		preferences = {
+local lsp_to_complete_items = vim.lsp.completion._lsp_to_complete_items
+vim.lsp.completion._lsp_to_complete_items = function(result, prefix, ...)
+	local matches = lsp_to_complete_items(result, prefix, ...)
+	if #matches == 1 and matches[1].word == prefix then
+		local item = matches[1].user_data.nvim.lsp.completion_item
+		if
+			(item.insertTextFormat == nil or item.insertTextFormat == vim.lsp.protocol.InsertTextFormat.PlainText)
+			and (type(item.additionalTextEdits) ~= "table" or next(item.additionalTextEdits) == nil)
+			and not item.command
+		then
+			return {}
+		end
+	end
+	return matches
+end
+
+vim.lsp.config("tsc", {
+	settings = {
+		["js/ts"] = {
 			preferGoToSourceDefinition = true,
-			jsxAttributeCompletionStyle = "none",
+		preferences = {
+				jsxAttributeCompletionStyle = "none",
+			},
 		},
 	},
 })
@@ -33,8 +60,39 @@ vim.lsp.config("harper_ls", {
 	},
 })
 
+vim.lsp.config("nim_langserver", {
+	handlers = {
+		["window/showMessage"] = function(err, result, context, config)
+			if
+				result
+				and result.type == vim.lsp.protocol.MessageType.Info
+				and (vim.startswith(result.message, "Nimsuggest initialized for ") or vim.startswith(result.message, "Opening file://"))
+			then
+				return
+			end
+			return vim.lsp.handlers["window/showMessage"](err, result, context, config)
+		end,
+	},
+	settings = {
+		nim = {
+			nimsuggestPath = vim.fn.expand("~/.local/bin/nimsuggest"),
+		},
+	},
+})
+
 vim.lsp.semantic_tokens.enable(false)
-vim.lsp.enable({ "ts_ls", "denols", "rust_analyzer", "gopls", "zls", "harper_ls" })
+vim.lsp.enable({ "tsc", "denols", "rust_analyzer", "gopls", "zls", "harper_ls", "sourcekit", "nim_langserver" })
+vim.api.nvim_create_autocmd("BufFilePost", {
+	callback = function(event)
+		if vim.api.nvim_buf_get_name(event.buf) ~= "" and vim.bo[event.buf].filetype ~= "" then
+			vim.api.nvim_exec_autocmds("FileType", {
+				group = "nvim.lsp.enable",
+				buffer = event.buf,
+				modeline = false,
+			})
+		end
+	end,
+})
 vim.lsp.log.set_level("info")
 
 local document_highlight_handler = vim.lsp.handlers["textDocument/documentHighlight"]
@@ -58,6 +116,35 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		client._log_prefix = ("LSP[%s:%d]"):format(client.name, client.id)
 		if client:supports_method("textDocument/completion") then
 			vim.lsp.completion.enable(true, client.id, event.buf, { autotrigger = true })
+			local group = vim.api.nvim_create_augroup("lsp-completion-input-" .. event.buf, { clear = false })
+			if #vim.api.nvim_get_autocmds({ group = group, event = "TextChangedI", buffer = event.buf }) == 0 then
+				local accepted_tick
+				vim.api.nvim_create_autocmd("CompleteDone", {
+					group = group,
+					buffer = event.buf,
+					callback = function()
+						if vim.v.event.reason == "accept" or vim.v.event.reason == "cancel" then
+							accepted_tick = vim.b[event.buf].changedtick
+						end
+					end,
+				})
+				vim.api.nvim_create_autocmd("TextChangedI", {
+					group = group,
+					buffer = event.buf,
+					callback = function()
+						vim.schedule(function()
+							if accepted_tick == vim.b[event.buf].changedtick then
+								accepted_tick = nil
+								return
+							end
+							local col = vim.api.nvim_win_get_cursor(0)[2]
+							if col > 0 and vim.api.nvim_get_current_line():sub(col, col):match("[%w_]") then
+								vim.lsp.completion.get()
+							end
+						end)
+					end,
+				})
+			end
 		end
 		if client:supports_method("textDocument/documentHighlight") then
 			local group = vim.api.nvim_create_augroup("lsp-document-highlight-" .. event.buf, { clear = true })
