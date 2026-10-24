@@ -80,8 +80,25 @@ vim.lsp.config("nim_langserver", {
 	},
 })
 
+-- nvim-lspconfig ships no elvish config; the server is built into elvish itself
+vim.lsp.config("elvish", {
+	cmd = { "elvish", "-lsp" },
+	filetypes = { "elvish" },
+	root_markers = { ".git" },
+})
+
 vim.lsp.semantic_tokens.enable(false)
-vim.lsp.enable({ "tsc", "denols", "rust_analyzer", "gopls", "zls", "harper_ls", "sourcekit", "nim_langserver" })
+vim.lsp.enable({
+	"tsc",
+	"denols",
+	"rust_analyzer",
+	"gopls",
+	"zls",
+	"harper_ls",
+	"sourcekit",
+	"nim_langserver",
+	"elvish",
+})
 vim.api.nvim_create_autocmd("BufFilePost", {
 	callback = function(event)
 		if vim.api.nvim_buf_get_name(event.buf) ~= "" and vim.bo[event.buf].filetype ~= "" then
