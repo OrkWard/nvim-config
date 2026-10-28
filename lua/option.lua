@@ -20,6 +20,7 @@ opt.statuscolumn = "%s%l %C " -- fold column after the line number, like zed
 
 -- Behavior
 opt.hidden = true -- allow vim make a dirty buffer hidden, but not unloaded (not so clear)
+opt.jumpoptions:remove("clean") -- keep jumps to closed files; wiped virtual buffers still lose their marks
 opt.splitbelow = true -- sp default bellow
 opt.splitright = true -- vsp default right
 opt.laststatus = 2 -- always keep the statusline

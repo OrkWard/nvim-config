@@ -98,6 +98,7 @@ vim.lsp.enable({
 	"sourcekit",
 	"nim_langserver",
 	"elvish",
+	"thriftls",
 })
 vim.api.nvim_create_autocmd("BufFilePost", {
 	callback = function(event)

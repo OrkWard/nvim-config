@@ -27,6 +27,7 @@ local colors = {
   ui_text_reversed = "#fafafa",
 }
 
+vim.o.background = "light"
 vim.cmd("highlight clear")
 if vim.fn.exists("syntax_on") then
   vim.cmd("syntax reset")
@@ -65,6 +66,11 @@ hl(0, "MatchParen", { bg = "#e3e7f7" })
 -- Status line
 hl(0, "StatusLine", { fg = colors.black, bg = colors.gray })
 hl(0, "StatusLineNC", { fg = colors.white, bg = colors.light_black })
+hl(0, "WinBar", { fg = colors.light_gray, bg = colors.faint_gray })
+hl(0, "WinBarNC", { fg = colors.light_gray, bg = colors.faint_gray })
+hl(0, "BufferBarInactive", { fg = colors.light_gray, bg = colors.faint_gray })
+hl(0, "BufferBarCurrent", { fg = colors.black, bg = colors.white })
+hl(0, "BufferBarActive", { fg = colors.black, bg = colors.white, sp = colors.blue, underline = true })
 hl(0, "ModeMsg", { fg = colors.black })
 hl(0, "MsgArea", { fg = colors.black, bg = colors.white })
 hl(0, "MsgSeparator", { fg = colors.light_gray })
@@ -94,6 +100,7 @@ hl(0, "FloatTitle", { fg = colors.purple, bg = colors.white, bold = true })
 -- Folds
 hl(0, "Folded", { fg = colors.light_gray, bg = colors.faint_gray })
 hl(0, "FoldColumn", { fg = colors.linenr, bg = colors.white })
+hl(0, "MultibufFileHeader", { fg = colors.black, bg = colors.faint_gray })
 
 -- Syntax highlighting
 hl(0, "Comment", { fg = colors.light_gray, italic = true })

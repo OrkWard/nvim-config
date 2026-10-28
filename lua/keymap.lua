@@ -45,6 +45,9 @@ map("n", "X", "<NOP>", opts)
 
 -- <C-s> -> write
 map("n", "<C-s>", "<Cmd>write<CR>", opts)
+map("n", "<M-w>", function()
+	require("buffers").delete()
+end)
 map("n", "<C-c>", function()
 	local cursor = vim.api.nvim_win_get_cursor(0)
 	vim.fn.setreg("+", ("%s:%d:%d"):format(vim.api.nvim_buf_get_name(0), cursor[1], cursor[2] + 1))
@@ -132,7 +135,24 @@ end)
 
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(event)
-		map("n", "gd", vim.lsp.buf.definition, { buffer = event.buf })
+		map("n", "gd", function()
+			vim.lsp.buf.definition({
+				on_list = function(list)
+					if #list.items == 1 then
+						local item = list.items[1]
+						local position = { line = item.lnum - 1, character = item.col - 1 }
+						vim.lsp.util.show_document({
+							uri = vim.uri_from_bufnr(item.bufnr or vim.fn.bufadd(item.filename)),
+							range = { start = position, ["end"] = position },
+						}, "utf-8")
+						vim.cmd("normal! zz")
+					else
+						vim.fn.setqflist({}, " ", list)
+						vim.cmd("botright copen")
+					end
+				end,
+			})
+		end, { buffer = event.buf })
 		map("n", "gD", vim.lsp.buf.declaration, { buffer = event.buf })
 		map("n", "gy", vim.lsp.buf.type_definition, { buffer = event.buf })
 		map("n", "gI", vim.lsp.buf.implementation, { buffer = event.buf })
@@ -238,6 +258,51 @@ map({ "n", "x", "o" }, "]x", function()
 	vim.treesitter.select("child", vim.v.count1)
 end)
 
+--[[
+-- Alt-h/l: parent start/end; Alt-j/k: next/previous sibling; Alt-c: first named child
+for _, key in ipairs({ "h", "l", "j", "k", "c" }) do
+	map("n", "<M-" .. key .. ">", function()
+		local ok, node = pcall(vim.treesitter.get_node)
+		if not ok then
+			return
+		end
+		for _ = 1, vim.v.count1 do
+			if not node then
+				return
+			end
+			if key == "h" or key == "l" then
+				node = node:parent()
+			elseif key == "j" then
+				node = node:next_named_sibling()
+			elseif key == "k" then
+				node = node:prev_named_sibling()
+			else
+				node = node:named_child(0)
+			end
+		end
+		if not node then
+			return
+		end
+		local row, col
+		if key == "l" then
+			row, col = node:end_()
+			if col == 0 and row > 0 then
+				row = row - 1
+				col = #vim.api.nvim_buf_get_lines(0, row, row + 1, false)[1]
+			end
+			col = math.max(col - 1, 0)
+		else
+			row, col = node:start()
+		end
+		vim.api.nvim_win_set_cursor(0, { row + 1, col })
+	end)
+end
+
+map("x", "<M-o>", function()
+	vim.treesitter.select("parent", vim.v.count1)
+end)
+]]
+
 -- ================================= Exchange =====================================
 -- zx is a sub prefix so every z builtin (scrolling, folds, spell) keeps working
 map("n", "zx", function()
@@ -324,7 +389,20 @@ vim.api.nvim_create_autocmd("CompleteChanged", {
 })
 
 -- =============================== Picker ========================================
+for key, step in pairs({ n = -1, m = 1 }) do
+	map("n", "<M-" .. key .. ">", function()
+		local buffers = vim.w.buffer_bar_buffers or {}
+		local index = vim.fn.index(buffers, vim.api.nvim_get_current_buf())
+		if index >= 0 then
+			vim.api.nvim_set_current_buf(buffers[(index + step * vim.v.count1) % #buffers + 1])
+		end
+	end)
+end
+
 map("n", "<M-p>", function()
+	if vim.bo.filetype == "NvimTree" then
+		vim.cmd("wincmd p")
+	end
 	MiniPick.registry.files()
 end)
 

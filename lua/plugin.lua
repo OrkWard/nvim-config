@@ -64,28 +64,7 @@ for group, color in pairs({
 	vim.api.nvim_set_hl(0, group, { fg = color })
 end
 
--- The built-in Visual highlight stops at the end of the entry name and the
--- Cursor highlight punches a hole into it, which is useless with a hidden
--- cursor. Repaint the selection with line extmarks instead: those span the full
--- window width and win over the cursor cell.
 local tree_visual_ns = vim.api.nvim_create_namespace("nvim_tree_visual")
-
-local function tree_visual_paint(bufnr)
-	vim.api.nvim_buf_clear_namespace(bufnr, tree_visual_ns, 0, -1)
-
-	local mode = vim.api.nvim_get_mode().mode
-	if mode ~= "v" and mode ~= "V" and mode ~= "\22" then
-		return
-	end
-
-	local first, last = vim.fn.line("v"), vim.fn.line(".")
-	if first > last then
-		first, last = last, first
-	end
-	for line = first, last do
-		vim.api.nvim_buf_set_extmark(bufnr, tree_visual_ns, line - 1, 0, { line_hl_group = "Visual" })
-	end
-end
 
 require("nvim-tree").setup({
 	disable_netrw = false,
@@ -97,11 +76,7 @@ require("nvim-tree").setup({
 			buffer = bufnr,
 			command = "set guicursor=a:block-NvimTreeHiddenCursor",
 		})
-		vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave" }, {
-			buffer = bufnr,
-			command = "set guicursor=n-v-c:block,i-ci-ve:ver25,r-cr:hor20,o:hor50,a:Cursor",
-		})
-		vim.api.nvim_create_autocmd("CmdlineEnter", {
+		vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave", "CmdlineEnter" }, {
 			buffer = bufnr,
 			command = "set guicursor=n-v-c:block,i-ci-ve:ver25,r-cr:hor20,o:hor50,a:Cursor",
 		})
@@ -112,12 +87,26 @@ require("nvim-tree").setup({
 		vim.api.nvim_create_autocmd({ "ModeChanged", "CursorMoved" }, {
 			buffer = bufnr,
 			callback = function()
-				tree_visual_paint(bufnr)
+				vim.api.nvim_buf_clear_namespace(bufnr, tree_visual_ns, 0, -1)
+				local mode = vim.api.nvim_get_mode().mode
+				if mode ~= "v" and mode ~= "V" and mode ~= "\22" then
+					return
+				end
+				local first, last = vim.fn.line("v"), vim.fn.line(".")
+				if first > last then
+					first, last = last, first
+				end
+				for line = first, last do
+					vim.api.nvim_buf_set_extmark(bufnr, tree_visual_ns, line - 1, 0, { line_hl_group = "Visual" })
+				end
 			end,
 		})
-
-		-- character-wise selection is meaningless on a tree of file names
 		vim.keymap.set("n", "v", "V", { buffer = bufnr, nowait = true })
+		vim.keymap.set("n", "<C-h>", "zh", { buffer = bufnr })
+		vim.keymap.set("n", "<C-l>", "zl", { buffer = bufnr })
+		if vim.api.nvim_get_current_buf() == bufnr then
+			vim.o.guicursor = "a:block-NvimTreeHiddenCursor"
+		end
 		vim.keymap.set("n", "<CR>", function()
 			local node = api.tree.get_node_under_cursor()
 			if node and node.parent then
@@ -139,8 +128,6 @@ require("nvim-tree").setup({
 			end
 		end, { buffer = bufnr })
 		vim.keymap.set("n", "h", api.node.navigate.parent_close, { buffer = bufnr })
-		vim.keymap.set("n", "<C-h>", "zh", { buffer = bufnr })
-		vim.keymap.set("n", "<C-l>", "zl", { buffer = bufnr })
 		vim.keymap.set("n", "%", api.fs.create, { buffer = bufnr })
 		vim.keymap.set("n", "d", function()
 			local node = api.tree.get_node_under_cursor()
@@ -216,6 +203,8 @@ require("nvim-tree").setup({
 	},
 	filters = { git_ignored = true },
 })
+
+require("buffers")
 
 if vim.fn.has("nvim-0.13") == 0 then
 	vim.api.nvim_create_autocmd("SessionWritePost", {
@@ -374,67 +363,71 @@ vim.api.nvim_create_autocmd("User", {
 do
 	local pick = require("mini.pick")
 
-	local function buffers_recent(local_opts)
-		local_opts =
-			vim.tbl_deep_extend("force", { include_current = false, include_unlisted = false }, local_opts or {})
-		local cur_buf = vim.api.nvim_get_current_buf()
-		local infos = vim.fn.getbufinfo()
-		local items = {}
-		for _, info in ipairs(infos) do
-			if
-				(local_opts.include_unlisted or info.listed == 1)
-				and (local_opts.include_current or info.bufnr ~= cur_buf)
-			then
-				local name = info.name ~= "" and vim.fn.fnamemodify(info.name, ":~:.") or "[No Name]"
-				table.insert(items, { text = name, bufnr = info.bufnr, _lastused = info.lastused or 0 })
+	local divider = vim.api.nvim_create_namespace("file_buffer_picker")
+
+	pick.registry.files = function()
+		local cwd = vim.fn.getcwd()
+		local open, buffers = {}, {}
+		for _, info in ipairs(vim.fn.getbufinfo({ buflisted = 1 })) do
+			local name = info.name ~= "" and vim.fn.fnamemodify(info.name, ":~:.") or "[No Name]"
+			table.insert(buffers, { text = name, bufnr = info.bufnr, _lastused = info.lastused or 0 })
+			if info.name ~= "" then
+				open[vim.fs.normalize(info.name)] = true
 			end
 		end
-
-		table.sort(items, function(a, b)
+		table.sort(buffers, function(a, b)
 			return a._lastused > b._lastused
 		end)
-		for _, item in ipairs(items) do
+		for _, item in ipairs(buffers) do
 			item._lastused = nil
-		end
-
-		return pick.start({ source = { name = "Buffers", items = items, show = pick.default_show } })
-	end
-
-	local function files_recent()
-		local open = {}
-		local cwd = vim.fn.getcwd()
-		for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-			local path = vim.api.nvim_buf_get_name(bufnr)
-			local relative = path ~= "" and vim.fs.relpath(cwd, path) or nil
-			if vim.bo[bufnr].buflisted and relative then
-				open[relative] = true
-			end
 		end
 
 		return pick.builtin.cli({
 			command = { "rg", "--files", "--color=never" },
 			postprocess = function(paths)
-				local buffers, files = {}, {}
+				local items = vim.list_slice(buffers)
 				for _, path in ipairs(paths) do
-					if path ~= "" then
-						table.insert(open[path] and buffers or files, path)
+					if path ~= "" and not open[vim.fs.normalize(vim.fs.joinpath(cwd, path))] then
+						table.insert(items, path)
 					end
 				end
-				vim.list_extend(buffers, files)
-				return buffers
+				return items
 			end,
 		}, {
 			source = {
-				name = "Files",
+				name = "Buffers / Files",
+				match = function(stritems, inds, query)
+					coroutine.wrap(function()
+						local matches = pick.default_match(stritems, inds, query, { sync = true })
+						if not matches then
+							return
+						end
+						local buffer_matches, file_matches = {}, {}
+						for _, index in ipairs(matches) do
+							table.insert(index <= #buffers and buffer_matches or file_matches, index)
+						end
+						vim.list_extend(buffer_matches, file_matches)
+						pick.set_picker_match_inds(buffer_matches)
+					end)()
+				end,
 				show = function(buf_id, items, query)
 					pick.default_show(buf_id, items, query, { show_icons = true })
+					vim.api.nvim_buf_clear_namespace(buf_id, divider, 0, -1)
+					for index = 2, #items do
+						if type(items[index - 1]) == "table" and type(items[index]) == "string" then
+							local width = vim.api.nvim_win_get_width(pick.get_picker_state().windows.main)
+							vim.api.nvim_buf_set_extmark(buf_id, divider, index - 1, 0, {
+								virt_lines = { { { string.rep("─", width), "Comment" } } },
+								virt_lines_above = true,
+								virt_lines_leftcol = true,
+							})
+							break
+						end
+					end
 				end,
 			},
 		})
 	end
-
-	pick.registry.buffers = buffers_recent
-	pick.registry.files = files_recent
 end
 
 require("nvim-surround").setup({})
@@ -444,6 +437,7 @@ do
 
 	require("conform").setup({
 		formatters_by_ft = {
+			go = { "gofmt" },
 			lua = { "stylua" },
 			python = { "isort", "black" },
 			rust = { "rustfmt", lsp_format = "fallback" },
