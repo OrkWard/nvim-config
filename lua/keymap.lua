@@ -135,24 +135,7 @@ end)
 
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(event)
-		map("n", "gd", function()
-			vim.lsp.buf.definition({
-				on_list = function(list)
-					if #list.items == 1 then
-						local item = list.items[1]
-						local position = { line = item.lnum - 1, character = item.col - 1 }
-						vim.lsp.util.show_document({
-							uri = vim.uri_from_bufnr(item.bufnr or vim.fn.bufadd(item.filename)),
-							range = { start = position, ["end"] = position },
-						}, "utf-8")
-						vim.cmd("normal! zz")
-					else
-						vim.fn.setqflist({}, " ", list)
-						vim.cmd("botright copen")
-					end
-				end,
-			})
-		end, { buffer = event.buf })
+		map("n", "gd", require("quickfix").definition, { buffer = event.buf })
 		map("n", "gD", vim.lsp.buf.declaration, { buffer = event.buf })
 		map("n", "gy", vim.lsp.buf.type_definition, { buffer = event.buf })
 		map("n", "gI", vim.lsp.buf.implementation, { buffer = event.buf })
@@ -166,6 +149,19 @@ vim.api.nvim_create_autocmd("LspAttach", {
 -- ================================== Search ====================================
 
 map("n", "/", "/\\v", opts)
+map("n", "<M-f>", function()
+	-- inside a search buffer: edit its query and rerun in place
+	if vim.api.nvim_buf_get_name(0):match("^search://") then
+		require("quickfix").search(vim.b.search_input, vim.b.search_paths, vim.api.nvim_get_current_buf())
+		return
+	end
+	require("quickfix").search(vim.fn.expand("<cword>"))
+end)
+map("x", "<M-f>", function()
+	local query = vim.fn.getregion(vim.fn.getpos("v"), vim.fn.getpos("."), { type = vim.fn.mode() })[1]
+	vim.cmd("normal! \27")
+	require("quickfix").search(query)
+end)
 map("n", "<Esc>", function()
 	vim.cmd("nohlsearch")
 	local win = vim.b.lsp_floating_preview

@@ -74,6 +74,33 @@ vim.api.nvim_create_autocmd("SessionWritePost", {
 	end,
 })
 
+-- multibuffers (gr/gd/search) come back from a session as empty shells: show the
+-- window's previous buffer instead and drop them. Scheduled: buffer_bar_buffers is
+-- restored by the lines appended above, which run after SessionLoadPost fires
+vim.api.nvim_create_autocmd("SessionLoadPost", {
+	callback = vim.schedule_wrap(function()
+		for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
+			local scheme = vim.api.nvim_buf_get_name(buffer):match("^(%a+)://")
+			if vim.tbl_contains({ "references", "definitions", "search" }, scheme) then
+				for _, window in ipairs(vim.fn.win_findbuf(buffer)) do
+					local previous
+					for _, candidate in ipairs(vim.w[window].buffer_bar_buffers or {}) do
+						if candidate ~= buffer and vim.api.nvim_buf_is_valid(candidate) then
+							previous = candidate
+						end
+					end
+					if previous then
+						vim.api.nvim_win_set_buf(window, previous)
+					else
+						vim.api.nvim_win_call(window, vim.cmd.enew)
+					end
+				end
+				vim.api.nvim_buf_delete(buffer, { force = true })
+			end
+		end
+	end),
+})
+
 function M.bar()
 	local window = vim.g.statusline_winid or vim.api.nvim_get_current_win()
 	local current = vim.api.nvim_win_get_buf(window)

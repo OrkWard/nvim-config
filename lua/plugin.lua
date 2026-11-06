@@ -162,6 +162,11 @@ require("nvim-tree").setup({
 		-- prompts y/N, and deletes the whole range when used from visual mode
 		vim.keymap.set({ "n", "x" }, "D", api.fs.remove, { buffer = bufnr, nowait = true })
 		vim.keymap.set("n", "R", api.tree.reload, { buffer = bufnr })
+		vim.keymap.set("n", "/", function()
+			local node = api.tree.get_node_under_cursor()
+			vim.cmd("wincmd p")
+			require("quickfix").search("", { node.absolute_path })
+		end, { buffer = bufnr, nowait = true })
 		vim.keymap.set("n", "q", api.tree.close, { buffer = bufnr })
 	end,
 	view = {
@@ -580,6 +585,14 @@ require("gitsigns").setup({
 		end)
 		map("[g", function()
 			gitsigns.nav_hunk("prev")
+		end)
+		map("<M-'>", function()
+			local preview = require("gitsigns.actions.preview")
+			if preview.has_preview_inline(bufnr) then
+				preview.clear_preview_inline(bufnr)
+			else
+				gitsigns.preview_hunk_inline()
+			end
 		end)
 	end,
 })
